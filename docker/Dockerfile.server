@@ -1,0 +1,35 @@
+FROM node:20-alpine AS builder
+
+# Install build dependencies including vips with HEIC/HEIF support
+RUN apk add --no-cache \
+    vips-dev \
+    vips-heif \
+    fftw-dev \
+    build-base \
+    python3
+
+WORKDIR /app
+COPY server/package*.json ./
+
+# Tell sharp to build from source so it picks up the system libvips with HEIC support
+ENV SHARP_IGNORE_GLOBAL_LIBVIPS=false
+RUN npm ci --build-from-source
+
+COPY server/ ./
+RUN npm run build
+
+# ── Runtime image ─────────────────────────────────────
+FROM node:20-alpine
+
+# Runtime libraries only (no build tools) – keeps image small
+RUN apk add --no-cache \
+    vips \
+    vips-heif
+
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY server/package*.json ./
+
+EXPOSE 3000
+CMD ["node", "dist/index.js"]

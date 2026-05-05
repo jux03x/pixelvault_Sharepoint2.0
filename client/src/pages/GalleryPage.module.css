@@ -1,0 +1,79 @@
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+}
+
+.sortBtns {
+  display: flex;
+  gap: 4px;
+  background: var(--color-surface-2);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.sortBtn {
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: background var(--transition), color var(--transition);
+  border: none;
+  cursor: pointer;
+  background: none;
+  font-family: inherit;
+}
+
+.sortBtn.active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+}
+
+@media (min-width: 1024px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+}
+
+.skeletonCard {
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+}
+
+.empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--color-text-secondary);
+}
+
+.count {
+  text-align: center;
+  margin-top: 32px;
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+}

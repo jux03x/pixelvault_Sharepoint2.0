@@ -1,0 +1,434 @@
+.page {
+  min-height: calc(100vh - var(--nav-height));
+  padding: 32px 20px 80px;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  margin-bottom: 24px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--color-surface-2);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  margin-bottom: 28px;
+  overflow-x: auto;
+  flex-wrap: wrap;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--color-text); }
+
+.activeTab {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.tabContent {
+  animation: fadeIn 0.2s ease;
+}
+
+/* Dashboard */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.statCard {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.statIcon { color: var(--color-accent); }
+
+.statValue {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+/* Image admin grid */
+.adminGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.loadingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.skeletonCard {
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+}
+
+.adminCard {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  transition: box-shadow var(--transition);
+}
+
+.adminCard:hover { box-shadow: var(--shadow-md); }
+
+.adminCard.flagged {
+  border-color: var(--color-warning);
+}
+
+.adminCardImg {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--color-surface-2);
+}
+
+.adminCardImg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.flagBadge, .infectedBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.flagBadge {
+  background: var(--color-warning);
+  color: #fff;
+}
+
+.infectedBadge {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.adminCardMeta {
+  padding: 10px 12px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.adminCardName {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adminCardInfo {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adminCardActions {
+  padding: 6px 12px 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.iconBtn:hover { background: var(--color-surface-2); color: var(--color-text); }
+
+.iconBtnActive {
+  background: rgba(255, 149, 0, 0.1);
+  border-color: rgba(255, 149, 0, 0.4);
+  color: var(--color-warning);
+}
+
+.iconBtnDanger:hover {
+  background: rgba(255, 59, 48, 0.1);
+  border-color: rgba(255, 59, 48, 0.4);
+  color: var(--color-danger);
+}
+
+/* Users table */
+.table {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.tableHeader {
+  display: grid;
+  grid-template-columns: 1fr 100px 80px 120px;
+  padding: 12px 16px;
+  background: var(--color-surface-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 1fr 100px 80px 120px;
+  padding: 14px 16px;
+  font-size: 14px;
+  border-top: 1px solid var(--color-border);
+  align-items: center;
+}
+
+.tableRow:hover { background: var(--color-surface-2); }
+
+.userEmail {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roleBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+}
+
+.adminBadge {
+  background: rgba(0, 122, 255, 0.12);
+  color: var(--color-accent);
+}
+
+.dateCell {
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+/* Design */
+.designGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.designSection {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.input {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color var(--transition);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.colorRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 480px) { .colorRow { grid-template-columns: 1fr; } }
+
+.colorInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.colorPicker {
+  width: 40px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border);
+  padding: 2px;
+  cursor: pointer;
+  background: var(--color-bg);
+}
+
+/* Toggle */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.toggleInput { display: none; }
+
+.toggleSlider {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  background: var(--color-border);
+  border-radius: 13px;
+  transition: background var(--transition);
+  flex-shrink: 0;
+}
+
+.toggleSlider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform var(--transition);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.toggleInput:checked + .toggleSlider { background: var(--color-accent); }
+.toggleInput:checked + .toggleSlider::after { transform: translateX(18px); }
+
+/* CSS upload */
+.hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.fileLabel {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--color-border);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+}
+
+.fileLabel:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(0, 122, 255, 0.04);
+}
+
+.saveRow {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity var(--transition);
+  font-family: inherit;
+}
+
+.btnPrimary:hover:not(:disabled) { opacity: 0.9; }
+.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.spin { animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

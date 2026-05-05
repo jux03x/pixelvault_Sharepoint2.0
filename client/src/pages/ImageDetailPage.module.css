@@ -1,0 +1,107 @@
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 20px 60px;
+}
+
+.skeleton {
+  height: 60vh;
+  border-radius: var(--radius-xl);
+  margin: 20px 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 8px 0;
+  transition: color var(--transition);
+}
+
+.backBtn:hover { color: var(--color-text); }
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+  font-family: inherit;
+}
+
+.actionBtn:hover { background: var(--color-surface-2); }
+.actionBtn:active { transform: scale(0.97); }
+
+.actionBtnText {
+  display: none;
+}
+@media (min-width: 480px) { .actionBtnText { display: inline; } }
+
+.liked {
+  background: rgba(255, 59, 48, 0.1);
+  border-color: rgba(255, 59, 48, 0.3);
+  color: var(--color-danger);
+}
+
+.dangerBtn:hover {
+  background: rgba(255, 59, 48, 0.1);
+  border-color: rgba(255, 59, 48, 0.3);
+  color: var(--color-danger);
+}
+
+.imageContainer {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 16px;
+}
+
+.image {
+  width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  display: block;
+}
+
+.meta {
+  padding: 4px 0;
+}
+
+.filename {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.metaText {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
