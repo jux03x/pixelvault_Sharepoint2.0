@@ -1,4 +1,4 @@
-version: '3.9'
+# No "version:" field – Compose V2 doesn't need it (and V1 is deprecated)
 
 services:
   # ── Nginx Reverse Proxy ──────────────────────────────
@@ -20,8 +20,6 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.client
-    environment:
-      - VITE_API_URL=/api
     restart: unless-stopped
     networks:
       - pixelvault
@@ -68,7 +66,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U pixelvault"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
     networks:
       - pixelvault
@@ -83,15 +82,17 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
+      # HTTP-based check works on all MinIO versions (old and new)
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
     networks:
       - pixelvault
 
-  # ── MinIO Bucket Setup ───────────────────────────────
+  # ── MinIO Bucket Setup (runs once, then exits) ───────
   minio-setup:
     image: minio/mc:latest
     depends_on:
@@ -99,10 +100,10 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-pixelvault} ${MINIO_SECRET_KEY:-pixelvault123};
-      mc mb --ignore-existing local/${MINIO_BUCKET:-images};
-      mc anonymous set download local/${MINIO_BUCKET:-images}/thumbnails;
-      exit 0;
+      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-pixelvault} ${MINIO_SECRET_KEY:-pixelvault123} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET:-images} &&
+      mc anonymous set download local/${MINIO_BUCKET:-images}/thumbnails &&
+      echo 'MinIO bucket ready'
       "
     networks:
       - pixelvault
@@ -112,8 +113,6 @@ services:
     image: clamav/clamav:stable
     volumes:
       - clamav_data:/var/lib/clamav
-    environment:
-      - CLAMAV_NO_FRESHCLAMD=false
     restart: unless-stopped
     networks:
       - pixelvault
