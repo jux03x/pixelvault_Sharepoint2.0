@@ -1,119 +1,159 @@
-# 🌐 PixelVault – Server-Deployment (öffentlich zugänglich machen)
+# 🌐 PixelVault – Deployment auf einem Linux-Server
 
-Diese Anleitung erklärt, wie du PixelVault auf einem echten Server mit eigener Domain und HTTPS betreibst.
+Diese Anleitung erklärt wie du PixelVault auf einem echten Server mit Domain und HTTPS betreibst.
 
 ---
 
 ## Voraussetzungen
 
-- Einen VPS / Server (z.B. bei Hetzner, DigitalOcean, Netcup – ab ~4€/Monat)
-- Eine Domain (z.B. von Namecheap, INWX, united-domains)
-- SSH-Zugriff auf den Server
-- Docker und Docker Compose auf dem Server installiert
+- Linux-Server (Hetzner CX22 empfohlen: ~4€/Monat)
+- Eine Domain (z.B. von INWX oder Namecheap)
+- SSH-Zugang zum Server
 
 ---
 
-## Schritt 1: Server vorbereiten
+## Schritt 1: Server erstellen (Hetzner)
 
-```bash
-# Docker installieren (Ubuntu/Debian)
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-newgrp docker
-
-# Docker Compose installieren
-sudo apt-get install docker-compose-plugin
-```
+1. Account bei [hetzner.com/cloud](https://www.hetzner.com/cloud) erstellen
+2. **New Server** → Ubuntu 24.04 → CX22 → Region: Nürnberg oder Helsinki
+3. SSH-Key hinzufügen (empfohlen) oder Passwort setzen
+4. Server erstellen → IP-Adresse notieren (z.B. `123.456.789.0`)
 
 ---
 
-## Schritt 2: PixelVault auf den Server laden
+## Schritt 2: DNS einrichten
 
-```bash
-git clone https://github.com/yourusername/pixelvault.git
-cd pixelvault
-cp .env.example .env
-nano .env   # Konfiguration anpassen
-```
-
----
-
-## Schritt 3: DNS konfigurieren
-
-Gehe zu deinem Domain-Anbieter und erstelle einen **A-Record**:
+Bei deinem Domain-Anbieter (INWX/Namecheap) einen A-Record erstellen:
 
 ```
 Typ:   A
-Name:  @ (oder eine Subdomain, z.B. "galerie")
-Wert:  DEINE_SERVER_IP
+Name:  @          (für meinegalerie.de)
+       fotos      (für fotos.meinedomain.de)
+Wert:  123.456.789.0   ← deine Server-IP
 TTL:   300
+```
+
+DNS-Propagation abwarten (1–30 Minuten). Prüfen mit:
+```bash
+ping meinegalerie.de
 ```
 
 ---
 
-## Schritt 4: HTTPS mit Caddy (empfohlen, kostenlos)
+## Schritt 3: Server einrichten
 
-Caddy richtet HTTPS automatisch ein. Installiere es auf dem Server:
+Per SSH einloggen:
+```bash
+ssh root@123.456.789.0
+```
+
+Einen normalen User anlegen (nicht als root arbeiten):
+```bash
+adduser pixelvault
+usermod -aG sudo pixelvault
+su - pixelvault
+```
+
+---
+
+## Schritt 4: PixelVault installieren
 
 ```bash
+git clone https://github.com/DEIN-USERNAME/pixelvault.git
+cd pixelvault
+bash install.sh
+```
+
+Der Installer richtet Docker, Compose und alle Services automatisch ein.
+
+---
+
+## Schritt 5: APP_URL setzen
+
+In der `.env`:
+```env
+APP_URL=https://meinegalerie.de
+PORT=8080
+ADMIN_EMAIL=deine@email.de
+```
+
+---
+
+## Schritt 6: Caddy installieren (Reverse Proxy + HTTPS)
+
+```bash
+# Caddy installieren
 sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+  | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+  | sudo tee /etc/apt/sources.list.d/caddy-stable.list
 sudo apt update && sudo apt install caddy
 ```
 
-Erstelle `/etc/caddy/Caddyfile`:
+Caddyfile erstellen:
+```bash
+sudo nano /etc/caddy/Caddyfile
+```
 
+Inhalt (ersetze die Domain):
 ```
 meinegalerie.de {
     reverse_proxy localhost:8080
 }
 ```
 
+Caddy starten:
 ```bash
+sudo systemctl enable caddy --now
 sudo systemctl reload caddy
 ```
 
-HTTPS wird jetzt **automatisch und kostenlos** eingerichtet! ✅
+HTTPS läuft jetzt **automatisch** – kein weiterer Aufwand. ✅
 
 ---
 
-## Schritt 5: APP_URL setzen
-
-In deiner `.env`:
-
-```env
-APP_URL=https://meinegalerie.de
-PORT=8080
-```
-
----
-
-## Schritt 6: Starten
+## Schritt 7: Firewall einrichten
 
 ```bash
-docker compose up -d
+sudo ufw allow ssh
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
 ```
 
-PixelVault ist jetzt unter `https://meinegalerie.de` erreichbar! 🎉
+PixelVault läuft jetzt unter `https://meinegalerie.de` 🎉
 
 ---
 
 ## Automatischer Neustart nach Reboot
 
-Die Docker-Container starten automatisch neu (`restart: unless-stopped`). Kein weiterer Aufwand nötig.
+Docker-Container starten automatisch neu (`restart: unless-stopped`).
+Caddy startet ebenfalls automatisch durch systemd.
+
+Nichts weiter zu tun.
 
 ---
 
 ## Backup
 
-Wichtige Daten liegen in Docker Volumes. Um sie zu sichern:
-
 ```bash
 # Datenbank sichern
 docker compose exec postgres pg_dump -U pixelvault pixelvault > backup_$(date +%Y%m%d).sql
 
-# Bilder sichern (MinIO-Daten)
-docker run --rm -v pixelvault_minio_data:/data -v $(pwd):/backup alpine \
-  tar czf /backup/minio_backup_$(date +%Y%m%d).tar.gz /data
+# Bilder sichern (MinIO Volume)
+docker run --rm \
+  -v pixelvault_minio_data:/data \
+  -v $(pwd)/backups:/backup \
+  alpine tar czf /backup/minio_$(date +%Y%m%d).tar.gz /data
+```
+
+---
+
+## Update
+
+```bash
+cd pixelvault
+git pull
+docker compose up -d --build
 ```

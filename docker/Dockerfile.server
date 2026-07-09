@@ -1,8 +1,9 @@
-# ── Build stage ───────────────────────────────────────────────────────────────
+# ── Build Stage ──────────────────────────────────────────────────────────────
 FROM node:20-alpine3.19 AS builder
 
-# vips-heif pulls in libheif + libde265 + x265 for full HEIC read/write
-# build-base = gcc, g++, make  |  python3 = needed by some node-gyp deps
+# vips-heif: HEIC Support für iPhone-Fotos
+# build-base: gcc/g++/make für native Module (Sharp)
+# python3: benötigt von node-gyp
 RUN apk add --no-cache \
     vips-dev \
     vips-heif \
@@ -14,32 +15,28 @@ RUN apk add --no-cache \
 WORKDIR /app
 COPY server/package*.json ./
 
-# Force sharp to compile against the system libvips (which has HEIC support)
-# instead of using its own bundled prebuilt binary (which does NOT have HEIC)
+# Sharp gegen System-libvips kompilieren (mit HEIC-Support)
 ENV SHARP_IGNORE_GLOBAL_LIBVIPS=false
+ENV PYTHON=/usr/bin/python3
 RUN npm ci --build-from-source
 
 COPY server/ ./
 RUN npm run build
 
-# ── Runtime stage ─────────────────────────────────────────────────────────────
-# Only copy what is needed to run – no compilers, no headers → smaller image
+# ── Runtime Stage ─────────────────────────────────────────────────────────────
 FROM node:20-alpine3.19
 
-RUN apk add --no-cache \
-    vips \
-    vips-heif \
-    curl
+# Nur Runtime-Libs, keine Build-Tools
+RUN apk add --no-cache vips vips-heif curl
 
 WORKDIR /app
-COPY --from=builder /app/dist       ./dist
+COPY --from=builder /app/dist        ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY server/package*.json ./
 
 EXPOSE 3000
 
-# Simple healthcheck so docker compose knows when the API is ready
-HEALTHCHECK --interval=10s --timeout=5s --retries=10 --start-period=15s \
+HEALTHCHECK --interval=10s --timeout=5s --retries=10 --start-period=20s \
   CMD curl -f http://localhost:3000/health || exit 1
 
 CMD ["node", "dist/index.js"]

@@ -1,7 +1,9 @@
-# No "version:" field – Compose V2 doesn't need it (and V1 is deprecated)
+# PixelVault docker-compose.yml
+# Kein "version:" Feld - Compose V2 braucht das nicht mehr
 
 services:
-  # ── Nginx Reverse Proxy ──────────────────────────────
+
+  # ── Nginx Reverse Proxy ──────────────────────────────────────────────────
   nginx:
     image: nginx:alpine
     ports:
@@ -15,7 +17,7 @@ services:
     networks:
       - pixelvault
 
-  # ── React Frontend ───────────────────────────────────
+  # ── React Frontend ───────────────────────────────────────────────────────
   client:
     build:
       context: .
@@ -24,7 +26,7 @@ services:
     networks:
       - pixelvault
 
-  # ── Node.js Backend ──────────────────────────────────
+  # ── Node.js Backend ──────────────────────────────────────────────────────
   server:
     build:
       context: .
@@ -32,13 +34,11 @@ services:
     env_file:
       - .env
     environment:
-      - DB_URL=${DB_URL:-postgresql://pixelvault:pixelvault@postgres:5432/pixelvault}
-      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio}
-      - MINIO_PORT=${MINIO_PORT:-9000}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-pixelvault}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-pixelvault123}
-      - MINIO_BUCKET=${MINIO_BUCKET:-images}
-      - MINIO_USE_SSL=${MINIO_USE_SSL:-false}
+      - NODE_ENV=production
+      - DB_URL=postgresql://${DB_USER:-pixelvault}:${DB_PASSWORD:-pixelvault}@postgres:5432/${DB_NAME:-pixelvault}
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
       - CLAMAV_HOST=clamav
       - CLAMAV_PORT=3310
     depends_on:
@@ -46,13 +46,11 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      clamav:
-        condition: service_started
     restart: unless-stopped
     networks:
       - pixelvault
 
-  # ── PostgreSQL Datenbank ─────────────────────────────
+  # ── PostgreSQL ───────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     environment:
@@ -63,16 +61,16 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pixelvault"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pixelvault}"]
       interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 10s
+      start_period: 15s
     restart: unless-stopped
     networks:
       - pixelvault
 
-  # ── MinIO Objektspeicher ─────────────────────────────
+  # ── MinIO Objektspeicher ─────────────────────────────────────────────────
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -82,17 +80,16 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      # HTTP-based check works on all MinIO versions (old and new)
       test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 10s
+      start_period: 15s
     restart: unless-stopped
     networks:
       - pixelvault
 
-  # ── MinIO Bucket Setup (runs once, then exits) ───────
+  # ── MinIO Bucket Setup (läuft einmal, beendet sich dann) ────────────────
   minio-setup:
     image: minio/mc:latest
     depends_on:
@@ -100,15 +97,14 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-pixelvault} ${MINIO_SECRET_KEY:-pixelvault123} &&
-      mc mb --ignore-existing local/${MINIO_BUCKET:-images} &&
-      mc anonymous set download local/${MINIO_BUCKET:-images}/thumbnails &&
-      echo 'MinIO bucket ready'
+        mc alias set local http://minio:9000 $${MINIO_ACCESS_KEY:-pixelvault} $${MINIO_SECRET_KEY:-pixelvault123} &&
+        mc mb --ignore-existing local/$${MINIO_BUCKET:-images} &&
+        echo 'Bucket bereit'
       "
     networks:
       - pixelvault
 
-  # ── ClamAV Malware Scanner ───────────────────────────
+  # ── ClamAV Malware Scanner ───────────────────────────────────────────────
   clamav:
     image: clamav/clamav:stable
     volumes:

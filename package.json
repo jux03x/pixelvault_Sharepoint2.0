@@ -1,0 +1,12 @@
+{
+  "name": "pixelvault",
+  "version": "1.0.0",
+  "description": "Secure self-hosted image gallery",
+  "private": true,
+  "scripts": {
+    "mock": "node scripts/mock-server.js",
+    "frontend": "cd client && npm run dev",
+    "dev": "echo 'Starte Mock-Server und Frontend...' && node scripts/mock-server.js & sleep 1 && cd client && npm run dev",
+    "install:all": "cd client && npm install && cd ../server && npm install"
+  }
+}
