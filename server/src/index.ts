@@ -31,7 +31,7 @@ async function start() {
 
   // ── Express app ──────────────────────────────────────────────────────────
   const app = express();
-  const PORT = parseInt(process.env.PORT || '3000');
+  const PORT = 3000;
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(cors({ origin: process.env.APP_URL || '*', credentials: true }));
