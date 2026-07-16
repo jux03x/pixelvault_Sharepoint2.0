@@ -73,7 +73,7 @@ export const api = {
 
   config: {
     get:    () => request<any>('/config'),
-    update: (data: any) => request('/config', { method: 'PUT', body: JSON.stringify(data) }),
+    update: (data: any) => request<any>('/config', { method: 'PUT', body: JSON.stringify(data) }),
   },
 
   admin: {
