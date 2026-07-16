@@ -1,14 +1,14 @@
 /* PixelVault Global Styles */
 :root {
-  --color-bg: #fafafa;
+  --color-bg: #eccfc1ee;
   --color-surface: #ffffff;
   --color-surface-2: #f5f5f5;
   --color-border: #e8e8e8;
   --color-text: #0a0a0a;
-  --color-text-secondary: #6b6b6b;
+  --color-text-secondary: #575656;
   --color-text-tertiary: #9b9b9b;
-  --color-accent: #007AFF;
-  --color-accent-hover: #0066d6;
+  --color-accent: #22533a;
+  --color-accent-hover: #d292f0;
   --color-danger: #FF3B30;
   --color-success: #34C759;
   --color-warning: #FF9500;
