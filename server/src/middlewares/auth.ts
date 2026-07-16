@@ -1,12 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { db } from '../config/database';
 
 export interface AuthRequest extends Request {
   user?: { id: string; email: string; role: string };
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-change-me';
 
 export function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   const token = extractToken(req);
@@ -23,9 +22,7 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
 
 export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
   requireAuth(req, res, () => {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
+    if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
     next();
   });
 }
@@ -36,14 +33,14 @@ export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunctio
     try {
       const payload = jwt.verify(token, JWT_SECRET) as { userId: string; email: string; role: string };
       req.user = { id: payload.userId, email: payload.email, role: payload.role };
-    } catch { /* ignore */ }
+    } catch { /* not logged in, that's fine */ }
   }
   next();
 }
 
 function extractToken(req: Request): string | null {
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7);
+  const h = req.headers.authorization;
+  if (h?.startsWith('Bearer ')) return h.slice(7);
   return null;
 }
 

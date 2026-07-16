@@ -1,212 +1,145 @@
 # 📸 PixelVault
 
-> Sichere, selbst gehostete Bildergalerie – open source, kein Abo, deine Daten.
+Selbst gehostete Bildergalerie – open source, kein Abo, deine Daten.
+
+**Funktionen:** Bilder hochladen · Like-System · Admin-Konsole · Malware-Scan · Apple-inspiriertes Design
 
 ---
 
-## ✨ Funktionen
-
-- 🖼️ Bilder hochladen, anschauen, herunterladen
-- ❤️ Like-System mit Ranking
-- 🔐 Login via Magic Link (kein Passwort)
-- 🛡️ Automatischer Malware-Scan (ClamAV)
-- 🎨 Design im Admin-Bereich anpassbar
-- 📱 Mobile-first, funktioniert auf allen Geräten
-
----
-
-## 🚀 Installation (Linux)
+## Installation (Linux)
 
 ### Voraussetzungen
+- Ubuntu 20.04+, Debian 11+ oder Fedora 38+
+- User mit `sudo`-Rechten
+- Internetverbindung
 
-- Linux (Ubuntu 20.04+, Debian 11+, Fedora 38+)
-- Einen User mit `sudo`-Rechten
-- Internetzugang (für den ersten Download)
+Docker, Node und alles weitere wird automatisch installiert.
 
-**Das war's.** Docker wird automatisch installiert falls nicht vorhanden.
-
----
-
-### Schritt 1: Projekt herunterladen
+### 1. Herunterladen
 
 ```bash
 git clone https://github.com/DEIN-USERNAME/pixelvault.git
 cd pixelvault
 ```
 
-Kein git? ZIP herunterladen, entpacken, Terminal in den Ordner:
-```bash
-unzip pixelvault.zip
-cd pixelvault
-```
-
----
-
-### Schritt 2: Installer ausführen
+### 2. Starten
 
 ```bash
 bash install.sh
 ```
 
-Das Skript macht automatisch:
-- ✅ Docker Engine installieren (offiziell, nicht das veraltete `docker.io`)
-- ✅ Docker Compose V2 sicherstellen
-- ✅ BuildKit aktivieren
-- ✅ Berechtigungen setzen
-- ✅ Sichere Zufalls-Secrets generieren
-- ✅ Admin-Email abfragen
-- ✅ Alle Container bauen und starten
+Das Skript fragt nach deiner Admin-E-Mail und einem Passwort, installiert alles Nötige und startet PixelVault.
 
-**Beim ersten Start:** 5–10 Minuten (Images werden heruntergeladen, Sharp wird kompiliert).
+**Beim ersten Start:** 5–10 Minuten (Images werden heruntergeladen).
 
----
-
-### Schritt 3: Browser öffnen
+### 3. Öffnen
 
 ```
 http://localhost:8080
 ```
 
----
-
-## 🔑 Erster Login
-
-1. Öffne `http://localhost:8080`
-2. Klicke **"Anmelden"**
-3. Gib deine Admin-Email ein (die du beim Setup eingetragen hast)
-4. Prüfe deine E-Mails → klicke den Magic Link
-
-> **Kein SMTP konfiguriert?** Der Login-Link erscheint direkt in den Server-Logs:
-> ```bash
-> docker compose logs server | grep "Magic link"
-> ```
+Login mit der E-Mail und dem Passwort das du beim Setup eingegeben hast.
 
 ---
 
-## ⚙️ Konfiguration
-
-Alle Einstellungen in der `.env` Datei:
+## Konfiguration (.env)
 
 ```env
-# ── Pflicht ──────────────────────────────────────────
-ADMIN_EMAIL=deine@email.de        # Wird automatisch Admin
+# Admin-Account
+ADMIN_EMAIL=deine@email.de
+ADMIN_PASSWORD=sicheres-passwort
 
-# ── Port ─────────────────────────────────────────────
-PORT=8080                          # Unter welchem Port PixelVault läuft
+# Port (Standard: 8080)
+PORT=8080
 
-# ── Upload ───────────────────────────────────────────
-MAX_FILE_SIZE=50MB                 # Max. Dateigröße pro Upload
+# Max. Upload-Größe
+MAX_FILE_SIZE=50MB
 
-# ── E-Mail (für Magic Links) ──────────────────────────
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=deine@gmail.com
-SMTP_PASS=dein-app-passwort
-SMTP_FROM=PixelVault <deine@gmail.com>
-
-# ── Zugang einschränken (optional) ───────────────────
-# Nur diese E-Mails dürfen sich registrieren:
-# ALLOWED_EMAILS=anna@mail.de,max@mail.de
-#
-# Oder nur diese Domain:
-# ALLOWED_DOMAIN=meinefirma.de
-#
-# Oder Zugangscode:
-# ACCESS_CODE=geheim123
+# Registrierung
+# false = nur Admin legt Nutzer an (Standard, empfohlen)
+# true  = jeder kann sich selbst registrieren
+REGISTRATION_OPEN=false
 ```
 
-Nach Änderungen neu starten:
+Nach Änderungen: `docker compose up -d`
+
+---
+
+## Nutzer verwalten
+
+Melde dich als Admin an → **Admin → Nutzer** → Neuen Nutzer anlegen.
+
+Oder über die `.env`:
+- `REGISTRATION_OPEN=true` setzen → Nutzer können sich selbst registrieren
+
+---
+
+## Nützliche Befehle
+
 ```bash
+docker compose logs -f          # Logs in Echtzeit
+docker compose ps               # Status aller Container
+docker compose down             # Stoppen (Daten bleiben)
+docker compose up -d --build    # Nach Update neu bauen
+docker compose restart server   # Nur Backend neu starten
+```
+
+---
+
+## Auf einem echten Server betreiben
+
+1. Server bei Hetzner erstellen (CX22, Ubuntu 24.04, ~4€/Monat)
+2. `bash install.sh` ausführen
+3. In `.env`: `APP_URL=https://deine-domain.de` setzen
+4. Caddy installieren für automatisches HTTPS:
+
+```bash
+sudo apt install caddy
+sudo nano /etc/caddy/Caddyfile
+```
+
+```
+deine-domain.de {
+    reverse_proxy localhost:8080
+}
+```
+
+```bash
+sudo systemctl reload caddy
+```
+
+HTTPS läuft sofort, kostenlos, automatisch erneuert.
+
+---
+
+## Häufige Probleme
+
+**Port belegt**
+```bash
+# PORT= in .env ändern, dann:
 docker compose up -d
 ```
 
----
-
-## 🛠️ Nützliche Befehle
-
+**docker: permission denied**
 ```bash
-# Status aller Container
-docker compose ps
-
-# Logs in Echtzeit
-docker compose logs -f
-
-# Nur Server-Logs
-docker compose logs -f server
-
-# Neu starten
-docker compose restart
-
-# Stoppen (Daten bleiben erhalten)
-docker compose down
-
-# Update auf neue Version
-git pull && docker compose up -d --build
-```
-
----
-
-## 🌐 Öffentlich erreichbar machen
-
-Siehe [`docs/deployment.md`](docs/deployment.md) für die vollständige Anleitung mit:
-- Domain + DNS einrichten
-- Caddy als Reverse Proxy (HTTPS automatisch)
-- Firewall konfigurieren
-
----
-
-## 🔧 Häufige Probleme
-
-**"permission denied" beim docker-Befehl**
-```bash
-# Neu einloggen nach Gruppenänderung, oder:
+# Neu einloggen nach install.sh, oder:
 newgrp docker
 ```
 
-**Port 8080 bereits belegt**
+**Server startet nicht**
 ```bash
-# In .env ändern:
-PORT=8081
-docker compose up -d
+docker compose logs server
+# Fehlermeldung gibt den genauen Grund an
 ```
 
-**ClamAV braucht sehr lange beim ersten Start**
+**ClamAV braucht lange**
 ```
-Normal – ClamAV lädt beim ersten Start Virus-Definitionen herunter (~200MB).
-Das passiert nur einmal. Danach startet es in Sekunden.
-```
-
-**Magic Link E-Mail kommt nicht an**
-```bash
-# Link direkt aus den Logs holen:
-docker compose logs server | grep -i "magic link"
-```
-
-**Bilder werden nicht angezeigt nach Upload**
-```bash
-# MinIO Status prüfen:
-docker compose logs minio
-docker compose logs minio-setup
+Normal beim ersten Start – lädt Virus-Definitionen (~200MB).
+Uploads werden zwischenzeitlich als "pending" markiert und nach dem Scan freigegeben.
 ```
 
 ---
 
-## 📁 Projektstruktur
-
-```
-pixelvault/
-├── install.sh          ← Linux-Installer (hier starten)
-├── docker-compose.yml  ← Alle Services
-├── .env.example        ← Konfigurationsvorlage
-├── client/             ← React Frontend
-├── server/             ← Node.js Backend
-├── nginx/              ← Reverse Proxy
-├── scripts/            ← Datenbank-Schema, Mock-Server
-└── docs/               ← Weitere Anleitungen
-```
-
----
-
-## 📄 Lizenz
+## Lizenz
 
 MIT – kostenlos nutzbar, auch kommerziell.

@@ -1,58 +1,87 @@
+import net from 'net';
 import { db } from '../config/database';
 import { deleteObject } from '../config/storage';
 import { logger } from '../utils/logger';
 
-export async function scanFile(buffer: Buffer, imageId: string): Promise<void> {
+const CLAMAV_HOST = process.env.CLAMAV_HOST || 'clamav';
+const CLAMAV_PORT = parseInt(process.env.CLAMAV_PORT || '3310');
+
+// Waits until ClamAV accepts connections (virus DB may take minutes to load)
+export async function waitForClamAV(): Promise<void> {
+  const MAX = 60; // up to 2 minutes – ClamAV loads virus definitions on first start
+  for (let i = 1; i <= MAX; i++) {
+    const ok = await pingClamAV();
+    if (ok) {
+      logger.info('✅ ClamAV ready');
+      return;
+    }
+    logger.info(`ClamAV not ready (attempt ${i}/${MAX}) – retrying in 3s…`);
+    await sleep(3000);
+  }
+  // Non-fatal: continue without ClamAV, mark all uploads as 'error'
+  logger.warn('⚠️  ClamAV did not become ready – uploads will be marked scan_status=error');
+}
+
+function pingClamAV(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host: CLAMAV_HOST, port: CLAMAV_PORT });
+    socket.setTimeout(2000);
+    socket.on('connect', () => {
+      socket.write('PING\n');
+    });
+    socket.on('data', (data) => {
+      resolve(data.toString().includes('PONG'));
+      socket.destroy();
+    });
+    socket.on('error', () => { resolve(false); socket.destroy(); });
+    socket.on('timeout', () => { resolve(false); socket.destroy(); });
+  });
+}
+
+export async function scanBuffer(buffer: Buffer, imageId: string): Promise<void> {
   try {
-    const net = await import('net');
-
     const result = await new Promise<string>((resolve, reject) => {
-      const client = net.createConnection(
-        { host: process.env.CLAMAV_HOST || 'clamav', port: parseInt(process.env.CLAMAV_PORT || '3310') },
-        () => {
-          const sizeBuffer = Buffer.alloc(4);
-          sizeBuffer.writeUInt32BE(buffer.length, 0);
+      const socket = net.createConnection({ host: CLAMAV_HOST, port: CLAMAV_PORT });
+      socket.setTimeout(30000);
 
-          client.write('zINSTREAM\0');
-          client.write(sizeBuffer);
-          client.write(buffer);
+      socket.on('connect', () => {
+        const sizeBuf = Buffer.alloc(4);
+        sizeBuf.writeUInt32BE(buffer.length, 0);
+        const zeroBuf = Buffer.alloc(4);
 
-          const zeroBuffer = Buffer.alloc(4);
-          zeroBuffer.writeUInt32BE(0, 0);
-          client.write(zeroBuffer);
-        }
-      );
+        socket.write('zINSTREAM\0');
+        socket.write(sizeBuf);
+        socket.write(buffer);
+        socket.write(zeroBuf);
+      });
 
       let data = '';
-      client.on('data', (chunk) => { data += chunk.toString(); });
-      client.on('end', () => resolve(data));
-      client.on('error', reject);
-
-      setTimeout(() => { client.destroy(); reject(new Error('ClamAV timeout')); }, 30000);
+      socket.on('data', (chunk) => { data += chunk.toString(); });
+      socket.on('end', () => resolve(data));
+      socket.on('error', reject);
+      socket.on('timeout', () => reject(new Error('ClamAV timeout')));
     });
 
-    const infected = result.includes('FOUND');
-
-    if (infected) {
-      logger.warn(`🦠 Infected file detected: ${imageId}`);
-      const imgResult = await db.query('SELECT storage_path, thumbnail_path FROM images WHERE id = $1', [imageId]);
-      if (imgResult.rows.length > 0) {
-        const { storage_path, thumbnail_path } = imgResult.rows[0];
+    if (result.includes('FOUND')) {
+      logger.warn(`🦠 Infected file detected: ${imageId} – deleting`);
+      const row = await db.query('SELECT storage_path, thumbnail_path FROM images WHERE id=$1', [imageId]);
+      if (row.rows[0]) {
         await Promise.allSettled([
-          deleteObject(storage_path),
-          thumbnail_path ? deleteObject(thumbnail_path) : Promise.resolve(),
+          deleteObject(row.rows[0].storage_path),
+          row.rows[0].thumbnail_path ? deleteObject(row.rows[0].thumbnail_path) : Promise.resolve(),
         ]);
       }
       await db.query(
-        "UPDATE images SET scan_status = 'infected', is_flagged = TRUE, is_deleted = TRUE WHERE id = $1",
+        "UPDATE images SET scan_status='infected', is_flagged=TRUE, is_deleted=TRUE WHERE id=$1",
         [imageId]
       );
     } else {
-      await db.query("UPDATE images SET scan_status = 'clean' WHERE id = $1", [imageId]);
-      logger.info(`✅ File scan clean: ${imageId}`);
+      await db.query("UPDATE images SET scan_status='clean' WHERE id=$1", [imageId]);
     }
   } catch (err) {
-    logger.error(`ClamAV scan error for ${imageId}:`, err);
-    await db.query("UPDATE images SET scan_status = 'error' WHERE id = $1", [imageId]);
+    logger.error(`ClamAV scan error for ${imageId}`, err);
+    await db.query("UPDATE images SET scan_status='error' WHERE id=$1", [imageId]);
   }
 }
+
+function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }

@@ -1,12 +1,11 @@
 import { create } from 'zustand';
-import { User } from '../types';
 import { api } from '../services/api';
 
 interface AuthState {
-  user: User | null;
+  user: { id: string; email: string; role: string } | null;
   token: string | null;
   loading: boolean;
-  setAuth: (token: string, user: User) => void;
+  setAuth: (token: string, user: any) => void;
   logout: () => void;
   initialize: () => Promise<void>;
 }
@@ -29,10 +28,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: async () => {
     const token = localStorage.getItem('pv_token');
     if (!token) { set({ loading: false }); return; }
-
     try {
       const user = await api.auth.me();
-      set({ user: user as User, token, loading: false });
+      set({ user, token, loading: false });
     } catch {
       localStorage.removeItem('pv_token');
       set({ token: null, user: null, loading: false });

@@ -7,6 +7,42 @@ import styles from './AdminPage.module.css';
 
 type Tab = 'dashboard' | 'images' | 'users' | 'design';
 
+function CreateUserForm({ onCreated }: { onCreated: () => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'user' | 'admin'>('user');
+  const [loading, setLoading] = useState(false);
+
+  const handle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    setLoading(true);
+    try {
+      await api.admin.createUser(email, password, role);
+      toast.success(`Nutzer ${email} angelegt`);
+      setEmail(''); setPassword(''); setRole('user');
+      onCreated();
+    } catch (err: any) { toast.error(err.message); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <form onSubmit={handle} className={styles.createUserRow}>
+      <input className={styles.input} type="email" placeholder="E-Mail" value={email}
+        onChange={e => setEmail(e.target.value)} required />
+      <input className={styles.input} type="password" placeholder="Passwort (min. 8 Zeichen)" value={password}
+        onChange={e => setPassword(e.target.value)} minLength={8} required />
+      <select className={styles.input} value={role} onChange={e => setRole(e.target.value as any)}>
+        <option value="user">Nutzer</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button type="submit" disabled={loading} className={styles.btnPrimary}>
+        {loading ? '…' : 'Anlegen'}
+      </button>
+    </form>
+  );
+}
+
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>('dashboard');
   const [stats, setStats] = useState<any>(null);
@@ -177,12 +213,19 @@ export function AdminPage() {
         {/* Users */}
         {tab === 'users' && (
           <div className={styles.tabContent}>
+            {/* Create user form */}
+            <div className={styles.createUserForm}>
+              <h3 className={styles.sectionTitle}>Neuen Nutzer anlegen</h3>
+              <CreateUserForm onCreated={() => api.admin.users().then(d => setUsers(d.users))} />
+            </div>
+
             <div className={styles.table}>
               <div className={styles.tableHeader}>
                 <span>E-Mail</span>
                 <span>Rolle</span>
                 <span>Bilder</span>
                 <span>Registriert</span>
+                <span></span>
               </div>
               {users.map(user => (
                 <div key={user.id} className={styles.tableRow}>
@@ -195,6 +238,23 @@ export function AdminPage() {
                   <span>{user.image_count}</span>
                   <span className={styles.dateCell}>
                     {new Date(user.created_at).toLocaleDateString('de-DE')}
+                  </span>
+                  <span>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Nutzer ${user.email} wirklich löschen?`)) return;
+                        try {
+                          await api.admin.deleteUser(user.id);
+                          setUsers(prev => prev.filter(u => u.id !== user.id));
+                          toast.success('Nutzer gelöscht');
+                        } catch (err: any) { toast.error(err.message); }
+                      }}
+                      className={styles.iconBtn}
+                      style={{ color: 'var(--color-danger)' }}
+                      title="Löschen"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </span>
                 </div>
               ))}

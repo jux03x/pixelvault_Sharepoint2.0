@@ -4,31 +4,22 @@ import { requireAdmin } from '../middlewares/auth';
 
 export const configRouter = Router();
 
-// GET /config - public
 configRouter.get('/', async (_req: Request, res: Response) => {
-  const result = await db.query("SELECT value FROM config WHERE key = 'app'");
-  if (result.rows.length === 0) return res.json({});
-  res.json(result.rows[0].value);
+  const r = await db.query("SELECT value FROM config WHERE key='app'");
+  res.json(r.rows[0]?.value || {});
 });
 
-// PUT /config - admin only
 configRouter.put('/', requireAdmin, async (req: Request, res: Response) => {
-  const { theme, branding, features } = req.body;
-
-  const currentResult = await db.query("SELECT value FROM config WHERE key = 'app'");
-  const current = currentResult.rows[0]?.value || {};
-
+  const cur = (await db.query("SELECT value FROM config WHERE key='app'")).rows[0]?.value || {};
   const updated = {
-    ...current,
-    ...(theme && { theme: { ...current.theme, ...theme } }),
-    ...(branding && { branding: { ...current.branding, ...branding } }),
-    ...(features && { features: { ...current.features, ...features } }),
+    ...cur,
+    ...(req.body.theme     && { theme:    { ...cur.theme,    ...req.body.theme    } }),
+    ...(req.body.branding  && { branding: { ...cur.branding, ...req.body.branding } }),
+    ...(req.body.features  && { features: { ...cur.features, ...req.body.features } }),
   };
-
   await db.query(
-    "INSERT INTO config (key, value) VALUES ('app', $1) ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()",
+    "INSERT INTO config(key,value) VALUES('app',$1) ON CONFLICT(key) DO UPDATE SET value=$1, updated_at=NOW()",
     [JSON.stringify(updated)]
   );
-
   res.json(updated);
 });

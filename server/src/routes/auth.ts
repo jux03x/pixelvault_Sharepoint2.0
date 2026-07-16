@@ -1,118 +1,59 @@
 import { Router, Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcrypt';
 import rateLimit from 'express-rate-limit';
 import { db } from '../config/database';
-import { signToken } from '../middlewares/auth';
-import { sendMagicLinkEmail } from '../services/email';
-import { logger } from '../utils/logger';
+import { signToken, requireAuth, AuthRequest } from '../middlewares/auth';
 
 export const authRouter = Router();
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { error: 'Too many requests, please try again later' },
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: { error: 'Too many login attempts – please wait 15 minutes' },
 });
 
-// POST /auth/request-link
-authRouter.post('/request-link', authLimiter, async (req: Request, res: Response) => {
-  const { email, accessCode } = req.body;
+// POST /auth/login
+authRouter.post('/login', loginLimiter, async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Valid email required' });
-  }
+  const result = await db.query('SELECT * FROM users WHERE email=$1', [email.toLowerCase()]);
+  const user = result.rows[0];
 
-  // Check access code if configured
-  if (process.env.ACCESS_CODE && accessCode !== process.env.ACCESS_CODE) {
-    return res.status(403).json({ error: 'Invalid access code' });
-  }
+  if (!user) return res.status(401).json({ error: 'Invalid email or password' });
 
-  const token = uuidv4() + '-' + uuidv4();
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  const valid = await bcrypt.compare(password, user.password);
+  if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
 
-  await db.query(
-    'INSERT INTO magic_links (email, token, expires_at) VALUES ($1, $2, $3)',
-    [email.toLowerCase(), token, expiresAt]
-  );
-
-  const magicLinkUrl = `${process.env.APP_URL || 'http://localhost:8080'}/auth/verify?token=${token}`;
-
-  try {
-    await sendMagicLinkEmail(email, magicLinkUrl);
-    logger.info(`Magic link sent to ${email}`);
-  } catch (err) {
-    // Log the link in development so you can still log in without SMTP
-    logger.warn(`📧 Email sending failed. Magic link for ${email}:`);
-    logger.warn(`🔗 ${magicLinkUrl}`);
-  }
-
-  res.json({ message: 'Magic link sent! Check your email.' });
+  const token = signToken(user.id, user.email, user.role);
+  res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
 });
 
-// POST /auth/verify
-authRouter.post('/verify', async (req: Request, res: Response) => {
-  const { token } = req.body;
+// POST /auth/register  (only if REGISTRATION_OPEN=true)
+authRouter.post('/register', loginLimiter, async (req: Request, res: Response) => {
+  if (process.env.REGISTRATION_OPEN !== 'true') {
+    return res.status(403).json({ error: 'Registration is closed. Contact the admin.' });
+  }
 
-  if (!token) return res.status(400).json({ error: 'Token required' });
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
+  const existing = await db.query('SELECT id FROM users WHERE email=$1', [email.toLowerCase()]);
+  if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already registered' });
+
+  const hash = await bcrypt.hash(password, 12);
   const result = await db.query(
-    'SELECT * FROM magic_links WHERE token = $1 AND used = FALSE AND expires_at > NOW()',
-    [token]
+    "INSERT INTO users (email, password, role) VALUES ($1, $2, 'user') RETURNING id, email, role",
+    [email.toLowerCase(), hash]
   );
 
-  if (result.rows.length === 0) {
-    return res.status(401).json({ error: 'Invalid or expired magic link' });
-  }
-
-  const magicLink = result.rows[0];
-  const email = magicLink.email;
-
-  // Mark token as used
-  await db.query('UPDATE magic_links SET used = TRUE WHERE id = $1', [magicLink.id]);
-
-  // Get or create user
-  let userResult = await db.query('SELECT * FROM users WHERE email = $1', [email]);
-
-  let user;
-  if (userResult.rows.length === 0) {
-    // Create new user - check if they should be admin
-    const role = email.toLowerCase() === (process.env.ADMIN_EMAIL || '').toLowerCase() ? 'admin' : 'user';
-    const insertResult = await db.query(
-      'INSERT INTO users (email, role) VALUES ($1, $2) RETURNING *',
-      [email, role]
-    );
-    user = insertResult.rows[0];
-    logger.info(`New user created: ${email} (${role})`);
-  } else {
-    user = userResult.rows[0];
-    // Upgrade to admin if this is the admin email
-    if (email.toLowerCase() === (process.env.ADMIN_EMAIL || '').toLowerCase() && user.role !== 'admin') {
-      await db.query('UPDATE users SET role = $1 WHERE id = $2', ['admin', user.id]);
-      user.role = 'admin';
-    }
-  }
-
-  const jwtToken = signToken(user.id, user.email, user.role);
-
-  res.json({
-    token: jwtToken,
-    user: { id: user.id, email: user.email, role: user.role },
-  });
+  const user = result.rows[0];
+  const token = signToken(user.id, user.email, user.role);
+  res.status(201).json({ token, user });
 });
 
 // GET /auth/me
-authRouter.get('/me', async (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Not authenticated' });
-
-  const token = authHeader.slice(7);
-  try {
-    const jwt = await import('jsonwebtoken');
-    const payload = jwt.default.verify(token, process.env.JWT_SECRET || 'fallback') as {
-      userId: string; email: string; role: string;
-    };
-    res.json({ id: payload.userId, email: payload.email, role: payload.role });
-  } catch {
-    res.status(401).json({ error: 'Invalid token' });
-  }
+authRouter.get('/me', requireAuth, (req: AuthRequest, res: Response) => {
+  res.json(req.user);
 });

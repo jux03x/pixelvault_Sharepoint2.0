@@ -1,265 +1,210 @@
 #!/bin/bash
-# PixelVault Linux Installer
-# Unterstützt: Ubuntu 20.04+, Debian 11+, Fedora 38+, RHEL/CentOS 8+
-# Führe aus mit: bash install.sh
+# PixelVault Installer – Ubuntu/Debian/Fedora
 set -e
 
-# ── Farben ───────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
-
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
 ok()   { echo -e "${GREEN}✓${NC} $1"; }
 info() { echo -e "${BLUE}→${NC} $1"; }
 warn() { echo -e "${YELLOW}⚠${NC}  $1"; }
 err()  { echo -e "${RED}✗${NC} $1"; exit 1; }
-step() { echo -e "\n${BOLD}── $1 ──────────────────────────────────${NC}"; }
+step() { echo -e "\n${BOLD}── $1${NC}"; }
 
-echo ""
-echo -e "${BOLD}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}║      📸 PixelVault Linux Installer       ║${NC}"
-echo -e "${BOLD}╚══════════════════════════════════════════╝${NC}"
-echo ""
+echo -e "\n${BOLD}╔══════════════════════════════════════╗"
+echo -e "║   📸 PixelVault Linux Installer      ║"
+echo -e "╚══════════════════════════════════════╝${NC}\n"
 
-# ── Root-Check ────────────────────────────────────────────────────────────────
-if [ "$EUID" -eq 0 ]; then
-  err "Nicht als root ausführen. Nutze einen normalen User mit sudo-Rechten."
-fi
+[ "$EUID" -eq 0 ] && err "Nicht als root ausführen. Normalen User mit sudo nutzen."
+sudo -v 2>/dev/null || err "Kein sudo-Zugriff."
 
-# Sudo verfügbar?
-if ! sudo -v 2>/dev/null; then
-  err "Dieser User hat keine sudo-Rechte. Bitte als sudo-fähigen User einloggen."
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # ── Distro erkennen ───────────────────────────────────────────────────────────
 step "System erkennen"
-if [ -f /etc/os-release ]; then
-  . /etc/os-release
-  DISTRO=$ID
-  DISTRO_LIKE=${ID_LIKE:-""}
-  ok "Erkannt: $PRETTY_NAME"
-else
-  err "Betriebssystem nicht erkennbar. Unterstützt: Ubuntu, Debian, Fedora, RHEL/CentOS"
-fi
-
-is_debian() { [[ "$DISTRO" == "ubuntu" || "$DISTRO" == "debian" || "$DISTRO_LIKE" == *"debian"* ]]; }
-is_fedora() { [[ "$DISTRO" == "fedora" || "$DISTRO" == "rhel" || "$DISTRO" == "centos" || "$DISTRO_LIKE" == *"fedora"* ]]; }
+[ -f /etc/os-release ] && . /etc/os-release || err "OS nicht erkennbar"
+ok "System: ${PRETTY_NAME:-$ID}"
+is_debian() { [[ "$ID" == "ubuntu" || "$ID" == "debian" || "${ID_LIKE:-}" == *"debian"* ]]; }
+is_fedora() { [[ "$ID" == "fedora" || "$ID" == "rhel" || "$ID" == "centos" || "${ID_LIKE:-}" == *"fedora"* ]]; }
 
 # ── Docker installieren ───────────────────────────────────────────────────────
-step "Docker Engine installieren"
-
-if command -v docker &>/dev/null; then
-  DOCKER_VERSION=$(docker --version | grep -oP '\d+\.\d+')
-  DOCKER_MAJOR=$(echo $DOCKER_VERSION | cut -d. -f1)
-  if [ "$DOCKER_MAJOR" -ge 23 ]; then
-    ok "Docker $DOCKER_VERSION bereits installiert"
-  else
-    warn "Docker $DOCKER_VERSION ist zu alt (brauche 23+). Aktualisiere…"
-    INSTALL_DOCKER=true
-  fi
-else
-  info "Docker nicht gefunden. Installiere…"
-  INSTALL_DOCKER=true
-fi
-
-if [ "${INSTALL_DOCKER:-false}" = "true" ]; then
+step "Docker Engine"
+if ! command -v docker &>/dev/null; then
+  info "Installiere Docker…"
   if is_debian; then
-    # Altes docker.io komplett entfernen falls vorhanden
     sudo apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
     sudo apt-get update -qq
     sudo apt-get install -y -qq ca-certificates curl gnupg lsb-release
-
-    # Offiziellen Docker GPG Key hinzufügen
     sudo install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/$DISTRO/gpg \
+    curl -fsSL https://download.docker.com/linux/$ID/gpg \
       | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
     sudo chmod a+r /etc/apt/keyrings/docker.gpg
-
-    # Docker Repository hinzufügen
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-      https://download.docker.com/linux/$DISTRO $(lsb_release -cs) stable" \
+      https://download.docker.com/linux/$ID $(lsb_release -cs) stable" \
       | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
     sudo apt-get update -qq
     sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
-    ok "Docker installiert"
-
   elif is_fedora; then
     sudo dnf remove -y docker docker-client docker-client-latest docker-common \
       docker-latest docker-latest-logrotate docker-logrotate docker-engine 2>/dev/null || true
     sudo dnf install -y dnf-plugins-core
     sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
     sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-    ok "Docker installiert"
   else
-    err "Distro nicht unterstützt für automatische Docker-Installation. Bitte manuell installieren: https://docs.docker.com/engine/install/"
+    err "Distro nicht unterstützt. Bitte Docker manuell installieren: https://docs.docker.com/engine/install/"
   fi
+  ok "Docker installiert"
+else
+  ok "Docker bereits vorhanden"
 fi
 
-# ── Docker Daemon starten ─────────────────────────────────────────────────────
-step "Docker Daemon starten"
+# ── Docker Daemon ─────────────────────────────────────────────────────────────
+step "Docker Daemon"
 if ! sudo systemctl is-active --quiet docker; then
   sudo systemctl enable docker --now
-  ok "Docker Daemon gestartet und für Autostart aktiviert"
+  ok "Docker Daemon gestartet"
 else
-  ok "Docker Daemon läuft bereits"
+  ok "Docker Daemon läuft"
 fi
 
-# ── User zur docker-Gruppe hinzufügen ─────────────────────────────────────────
-step "Docker-Berechtigungen setzen"
+# ── Docker Gruppe ─────────────────────────────────────────────────────────────
+step "Docker Berechtigungen"
+DOCKER_CMD="docker"; COMPOSE_CMD="docker compose"
 if ! groups "$USER" | grep -q docker; then
   sudo usermod -aG docker "$USER"
-  warn "User '$USER' zur docker-Gruppe hinzugefügt."
-  warn "WICHTIG: Du musst dich einmal neu einloggen damit das wirkt."
-  warn "Führe danach nochmal 'bash install.sh' aus oder nutze 'newgrp docker'."
-  # Für den Rest dieses Skripts als docker-Gruppe laufen
-  DOCKER_CMD="sudo docker"
-  COMPOSE_CMD="sudo docker compose"
+  DOCKER_CMD="sudo docker"; COMPOSE_CMD="sudo docker compose"
+  warn "User zur docker-Gruppe hinzugefügt (gilt nach nächstem Login)"
 else
-  ok "Docker-Berechtigungen bereits gesetzt"
-  DOCKER_CMD="docker"
-  COMPOSE_CMD="docker compose"
-fi
-
-# ── Docker Compose V2 prüfen ──────────────────────────────────────────────────
-step "Docker Compose V2 prüfen"
-if $DOCKER_CMD compose version &>/dev/null; then
-  COMPOSE_VERSION=$($DOCKER_CMD compose version --short 2>/dev/null || echo "ok")
-  ok "Docker Compose V2: $COMPOSE_VERSION"
-else
-  # Fallback: als Plugin installieren
-  info "Installiere Docker Compose Plugin…"
-  COMPOSE_PLUGIN_DIR="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"
-  mkdir -p "$COMPOSE_PLUGIN_DIR"
-  curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
-    -o "$COMPOSE_PLUGIN_DIR/docker-compose"
-  chmod +x "$COMPOSE_PLUGIN_DIR/docker-compose"
-  ok "Docker Compose V2 installiert"
+  ok "Docker-Gruppe OK"
 fi
 
 # ── BuildKit aktivieren ───────────────────────────────────────────────────────
-step "BuildKit aktivieren"
-# BuildKit ist der moderne Docker Build-Engine – deutlich schneller und zuverlässiger
+step "BuildKit"
 export DOCKER_BUILDKIT=1
-export COMPOSE_DOCKER_CLI_BUILD=1
-
-# Persistent in Docker-Daemon-Config setzen
 if [ ! -f /etc/docker/daemon.json ]; then
-  echo '{"features": {"buildkit": true}}' | sudo tee /etc/docker/daemon.json > /dev/null
-  sudo systemctl reload docker 2>/dev/null || sudo systemctl restart docker
-  ok "BuildKit aktiviert (persistent)"
+  echo '{"features":{"buildkit":true}}' | sudo tee /etc/docker/daemon.json >/dev/null
+  sudo systemctl reload docker
+  ok "BuildKit aktiviert"
+elif ! grep -q buildkit /etc/docker/daemon.json; then
+  sudo python3 -c "
+import json
+with open('/etc/docker/daemon.json') as f: cfg=json.load(f)
+cfg.setdefault('features',{})['buildkit']=True
+with open('/etc/docker/daemon.json','w') as f: json.dump(cfg,f,indent=2)
+" && sudo systemctl reload docker && ok "BuildKit aktiviert" || warn "BuildKit manuell aktivieren falls nötig"
 else
-  # Bestehende Config nicht überschreiben, aber prüfen
-  if grep -q "buildkit" /etc/docker/daemon.json; then
-    ok "BuildKit bereits konfiguriert"
-  else
-    warn "BuildKit manuell in /etc/docker/daemon.json aktivieren falls Probleme auftreten"
-  fi
+  ok "BuildKit bereits aktiv"
 fi
+
+# ── Buildx installieren ───────────────────────────────────────────────────────
+step "Docker Buildx"
+RAW_ARCH=$(uname -m)
+case $RAW_ARCH in
+  x86_64)        BX_ARCH="amd64" ;;
+  aarch64|arm64) BX_ARCH="arm64" ;;
+  armv7l)        BX_ARCH="arm-v7" ;;
+  *)             BX_ARCH="amd64" ;;
+esac
+ok "Architektur: $RAW_ARCH → $BX_ARCH"
+
+# Alle alten Buildx-Versionen entfernen
+sudo apt-get remove -y docker-buildx-plugin 2>/dev/null || true
+for D in "$HOME/.docker/cli-plugins" "/usr/lib/docker/cli-plugins" \
+          "/usr/local/lib/docker/cli-plugins" "/usr/libexec/docker/cli-plugins" \
+          "/usr/lib/x86_64-linux-gnu/docker/cli-plugins" "/usr/lib/aarch64-linux-gnu/docker/cli-plugins"; do
+  [ -f "$D/docker-buildx" ] && sudo rm -f "$D/docker-buildx" && info "  Entfernt: $D/docker-buildx"
+done
+
+# Plugin-Verzeichnis erkennen: gleicher Ort wie docker-compose
+COMPOSE_PATH=$($DOCKER_CMD info 2>/dev/null | grep -i "Path:.*docker-compose" | awk '{print $2}' | head -1)
+if [ -n "$COMPOSE_PATH" ]; then
+  PLUGIN_DIR=$(dirname "$COMPOSE_PATH")
+else
+  for TRY in "/usr/libexec/docker/cli-plugins" "/usr/lib/docker/cli-plugins" "/usr/local/lib/docker/cli-plugins"; do
+    [ -d "$TRY" ] && PLUGIN_DIR="$TRY" && break
+  done
+  PLUGIN_DIR="${PLUGIN_DIR:-/usr/local/lib/docker/cli-plugins}"
+fi
+ok "Plugin-Verzeichnis: $PLUGIN_DIR"
+
+BX_VER=$(curl -sf https://api.github.com/repos/docker/buildx/releases/latest \
+  | grep '"tag_name"' | cut -d'"' -f4 || echo "v0.19.3")
+info "Installiere Buildx $BX_VER…"
+sudo mkdir -p "$PLUGIN_DIR"
+sudo curl -fsSL \
+  "https://github.com/docker/buildx/releases/download/${BX_VER}/buildx-${BX_VER}.linux-${BX_ARCH}" \
+  -o "$PLUGIN_DIR/docker-buildx"
+sudo chmod +x "$PLUGIN_DIR/docker-buildx"
+INSTALLED=$($DOCKER_CMD buildx version 2>/dev/null | grep -oP 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "?")
+ok "Buildx $INSTALLED aktiv"
 
 # ── .env erstellen ────────────────────────────────────────────────────────────
-step "Konfiguration erstellen"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
+step "Konfiguration"
 if [ ! -f ".env" ]; then
   cp .env.example .env
-  ok ".env aus Vorlage erstellt"
-else
-  ok ".env existiert bereits"
+  ok ".env erstellt"
 fi
 
-# JWT_SECRET automatisch generieren wenn noch Standard
-if grep -q "bitte-aendern" .env; then
-  NEW_JWT=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
-  sed -i "s|bitte-aendern-sehr-langer-zufaelliger-sicherheits-schluessel|$NEW_JWT|" .env
-  ok "JWT_SECRET automatisch generiert"
+# JWT_SECRET generieren
+if grep -q "bitte-aendern" .env 2>/dev/null || grep -q "^JWT_SECRET=$" .env 2>/dev/null; then
+  JWT=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+  sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$JWT|" .env
+  ok "JWT_SECRET generiert"
 fi
 
-# MinIO Secret automatisch generieren wenn noch Standard
-if grep -q "pixelvault123" .env; then
-  NEW_MINIO=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32)
-  sed -i "s|pixelvault123|$NEW_MINIO|" .env
-  ok "MinIO Secret automatisch generiert"
+# MinIO Secret
+if grep -q "^MINIO_SECRET_KEY=changeme" .env 2>/dev/null; then
+  MSEC=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32)
+  sed -i "s|^MINIO_SECRET_KEY=.*|MINIO_SECRET_KEY=$MSEC|" .env
+  ok "MinIO Secret generiert"
 fi
 
-# Admin-Email prüfen
+# Admin Email
 ADMIN_EMAIL=$(grep "^ADMIN_EMAIL=" .env | cut -d= -f2)
 if [ -z "$ADMIN_EMAIL" ] || [ "$ADMIN_EMAIL" = "admin@example.com" ]; then
-  echo ""
-  warn "Deine Admin-Email ist noch nicht gesetzt!"
-  read -p "  Gib deine Admin-Email-Adresse ein: " INPUT_EMAIL
-  if [[ "$INPUT_EMAIL" == *"@"*"."* ]]; then
-    sed -i "s|ADMIN_EMAIL=admin@example.com|ADMIN_EMAIL=$INPUT_EMAIL|" .env
-    ok "Admin-Email gesetzt: $INPUT_EMAIL"
+  echo ""; read -p "  Admin E-Mail: " IN_EMAIL
+  [[ "$IN_EMAIL" == *"@"*"."* ]] && sed -i "s|^ADMIN_EMAIL=.*|ADMIN_EMAIL=$IN_EMAIL|" .env && ok "Admin E-Mail: $IN_EMAIL" || warn "Ungültig – später in .env setzen"
+fi
+
+# Admin Passwort
+ADMIN_PW=$(grep "^ADMIN_PASSWORD=" .env | cut -d= -f2)
+if [ -z "$ADMIN_PW" ] || [ "$ADMIN_PW" = "bitte-aendern" ]; then
+  echo ""; read -s -p "  Admin Passwort (min. 8 Zeichen): " IN_PW; echo ""
+  if [ ${#IN_PW} -ge 8 ]; then
+    sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=$IN_PW|" .env && ok "Admin Passwort gesetzt"
   else
-    warn "Ungültige Email – bitte später in .env manuell setzen"
+    warn "Zu kurz – bitte ADMIN_PASSWORD in .env manuell setzen"
   fi
 fi
 
-# ── Ports prüfen ─────────────────────────────────────────────────────────────
-step "Port-Verfügbarkeit prüfen"
-PORT=$(grep "^PORT=" .env | cut -d= -f2 || echo "8080")
-PORT=${PORT:-8080}
-
+# ── Port prüfen ───────────────────────────────────────────────────────────────
+PORT=$(grep "^PORT=" .env | cut -d= -f2 || echo "8080"); PORT=${PORT:-8080}
 if ss -tlnp 2>/dev/null | grep -q ":$PORT " || netstat -tlnp 2>/dev/null | grep -q ":$PORT "; then
-  warn "Port $PORT ist bereits belegt!"
-  warn "Ändere PORT= in der .env Datei auf einen freien Port (z.B. 8081)"
+  warn "Port $PORT belegt – PORT= in .env ändern"
 else
-  ok "Port $PORT ist frei"
+  ok "Port $PORT frei"
 fi
 
-# ── PixelVault starten ────────────────────────────────────────────────────────
+# ── Starten ───────────────────────────────────────────────────────────────────
 step "PixelVault starten"
-info "Baue und starte alle Container…"
-info "(Beim ersten Start: ca. 5-10 Minuten – Abhängigkeiten werden heruntergeladen)"
-echo ""
+info "Baue Container (beim ersten Start: ~5-10 Minuten)…"
+DOCKER_BUILDKIT=1 $COMPOSE_CMD up -d --build
 
-# Mit sudo falls nötig, mit BuildKit
-DOCKER_BUILDKIT=1 $COMPOSE_CMD up -d --build 2>&1
+# Warten
+info "Warte auf PixelVault…"
+for i in $(seq 1 40); do
+  curl -sf "http://localhost:$PORT" >/dev/null 2>&1 && break
+  sleep 3; echo -n "."
+done; echo ""
 
-# ── Warten bis Server bereit ──────────────────────────────────────────────────
-step "Warte auf PixelVault"
-info "Warte bis alle Services bereit sind…"
-
-MAX_WAIT=120
-WAITED=0
-while [ $WAITED -lt $MAX_WAIT ]; do
-  if curl -sf "http://localhost:$PORT" > /dev/null 2>&1; then
-    break
-  fi
-  sleep 3
-  WAITED=$((WAITED + 3))
-  echo -n "."
-done
+echo -e "\n${BOLD}╔══════════════════════════════════════╗"
+echo -e "║    🎉 PixelVault ist bereit!          ║"
+echo -e "╚══════════════════════════════════════╝${NC}"
+echo -e "\n  👉 http://localhost:$PORT"
+echo -e "  Admin-Login mit der E-Mail und dem Passwort aus der .env\n"
+echo "  Befehle:"
+echo "    Logs:      docker compose logs -f"
+echo "    Status:    docker compose ps"
+echo "    Stoppen:   docker compose down"
+echo "    Update:    git pull && docker compose up -d --build"
+[ "$DOCKER_CMD" = "sudo docker" ] && echo -e "\n${YELLOW}⚠  Neu einloggen damit 'docker' ohne sudo funktioniert${NC}"
 echo ""
-
-if [ $WAITED -ge $MAX_WAIT ]; then
-  warn "PixelVault antwortet noch nicht nach ${MAX_WAIT}s."
-  warn "Das kann beim ersten Start normal sein (ClamAV lädt Virus-Definitionen)."
-  warn "Prüfe den Status mit: docker compose logs -f"
-else
-  ok "PixelVault antwortet!"
-fi
-
-# ── Fertig ────────────────────────────────────────────────────────────────────
-echo ""
-echo -e "${BOLD}╔══════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}║       🎉 PixelVault ist gestartet!       ║${NC}"
-echo -e "${BOLD}╚══════════════════════════════════════════╝${NC}"
-echo ""
-echo -e "  👉 Öffne im Browser: ${BOLD}http://localhost:$PORT${NC}"
-echo ""
-echo "  Nützliche Befehle:"
-echo "    Logs ansehen:     docker compose logs -f"
-echo "    Status prüfen:    docker compose ps"
-echo "    Stoppen:          docker compose down"
-echo "    Neu starten:      docker compose restart"
-echo "    Update:           git pull && docker compose up -d --build"
-echo ""
-
-# Hinweis wenn Gruppe erst nach Re-Login aktiv wird
-if [ "${DOCKER_CMD}" = "sudo docker" ]; then
-  echo -e "${YELLOW}⚠  Hinweis:${NC} Du wurdest zur docker-Gruppe hinzugefügt."
-  echo "   Nach einem neuen Login kannst du 'docker' ohne sudo nutzen."
-  echo ""
-fi
