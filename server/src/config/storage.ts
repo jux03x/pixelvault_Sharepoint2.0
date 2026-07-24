@@ -36,12 +36,32 @@ export async function ensureBucket(): Promise<void> {
   }
 }
 
-export async function getSignedUrl(objectPath: string, expiry = 3600): Promise<string> {
-  return minioClient.presignedGetObject(BUCKET, objectPath, expiry);
+//export async function getSignedUrl(objectPath: string, expiry = 3600): Promise<string> {
+  //return minioClient.presignedGetObject(BUCKET, objectPath, expiry);
+//}
+export async function getSignedUrl(
+  objectPath: string,
+  expiry = 3600
+): Promise<string> {
+
+  const signedUrl = await minioClient.presignedGetObject(
+    BUCKET,
+    objectPath,
+    expiry
+  );
+
+  return signedUrl.replace(
+    'http://minio:9000',
+    'http://127.0.0.1:9000'
+  );
 }
 
 export async function deleteObject(objectPath: string): Promise<void> {
   await minioClient.removeObject(BUCKET, objectPath);
+}
+
+export async function getObject(objectPath: string) {
+  return minioClient.getObject(BUCKET, objectPath);
 }
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
