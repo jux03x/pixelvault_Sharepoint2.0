@@ -36,9 +36,6 @@ export async function ensureBucket(): Promise<void> {
   }
 }
 
-//export async function getSignedUrl(objectPath: string, expiry = 3600): Promise<string> {
-  //return minioClient.presignedGetObject(BUCKET, objectPath, expiry);
-//}
 export async function getSignedUrl(
   objectPath: string,
   expiry = 3600
