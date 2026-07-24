@@ -3,7 +3,7 @@ import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
 import { db } from '../config/database';
-import { minioClient, BUCKET, getSignedUrl, deleteObject } from '../config/storage';
+import { minioClient, BUCKET, deleteObject, getObject } from '../config/storage';
 import { requireAuth, requireAdmin, optionalAuth, AuthRequest } from '../middlewares/auth';
 import { scanBuffer } from '../services/clamav';
 import { logger } from '../utils/logger';
@@ -48,8 +48,17 @@ const upload = multer({
 async function addUrls(img: any) {
   return {
     ...img,
-    url: await getSignedUrl(img.storage_path),
-    thumbnail_url: img.thumbnail_path ? await getSignedUrl(img.thumbnail_path) : null,
+
+    // Bild anzeigen
+    url: `/images/${img.id}/file`,
+
+    // kleines Bild für Galerie
+    thumbnail_url: img.thumbnail_path
+      ? `/images/${img.id}/thumb`
+      : null,
+
+    // Download
+    download_url: `/images/${img.id}/download`,
   };
 }
 
@@ -94,20 +103,6 @@ imagesRouter.get('/top', optionalAuth, async (req: AuthRequest, res: Response) =
   res.json({ images });
 });
 
-// GET /images/:id
-imagesRouter.get('/:id', optionalAuth, async (req: AuthRequest, res: Response) => {
-  const uid = req.user?.id || null;
-  const result = await db.query(`
-    SELECT i.*, COUNT(l.id)::int AS like_count,
-      ${uid ? 'EXISTS(SELECT 1 FROM likes WHERE image_id=i.id AND user_id=$2)' : 'FALSE'} AS user_liked
-    FROM images i LEFT JOIN likes l ON l.image_id=i.id
-    WHERE i.id=$1 AND i.is_deleted=FALSE GROUP BY i.id
-  `, uid ? [req.params.id, uid] : [req.params.id]);
-
-  if (!result.rows[0]) return res.status(404).json({ error: 'Image not found' });
-  res.json(await addUrls(result.rows[0]));
-});
-
 // POST /images/upload
 imagesRouter.post('/upload', requireAuth, uploadLimiter, upload.single('image'), async (req: AuthRequest, res: Response) => {
   if (!req.file) return res.status(400).json({ error: 'No file provided' });
@@ -143,6 +138,138 @@ imagesRouter.post('/upload', requireAuth, uploadLimiter, upload.single('image'),
   scanBuffer(buffer, id).catch(err => logger.error('Scan error', err));
 
   res.status(201).json(await addUrls(row));
+});
+
+// GET /images/:id/file
+imagesRouter.get('/:id/file', optionalAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await db.query(
+      `
+      SELECT storage_path, mime_type
+      FROM images
+      WHERE id=$1
+      AND is_deleted=FALSE
+      `,
+      [req.params.id]
+    );
+
+    const image = result.rows[0];
+
+    if (!image) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+
+    const stream = await getObject(image.storage_path);
+
+    res.setHeader(
+      'Content-Type',
+      image.mime_type
+    );
+
+    res.setHeader(
+      'Content-Disposition',
+      'inline'
+    );
+
+    stream.pipe(res);
+
+  } catch (err) {
+    logger.error('Image stream error', err);
+    res.status(500).json({ error: 'Failed to load image' });
+  }
+});
+
+
+// GET /images/:id/thumb
+imagesRouter.get('/:id/thumb', optionalAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await db.query(
+      `
+      SELECT thumbnail_path
+      FROM images
+      WHERE id=$1
+      AND is_deleted=FALSE
+      `,
+      [req.params.id]
+    );
+
+    const image = result.rows[0];
+
+    if (!image?.thumbnail_path) {
+      return res.status(404).json({ error: 'Thumbnail not found' });
+    }
+
+    const stream = await getObject(image.thumbnail_path);
+
+    res.setHeader(
+      'Content-Type',
+      'image/webp'
+    );
+
+    res.setHeader(
+      'Content-Disposition',
+      'inline'
+    );
+
+    stream.pipe(res);
+
+  } catch (err) {
+    logger.error('Thumbnail stream error', err);
+    res.status(500).json({ error: 'Failed to load thumbnail' });
+  }
+});
+
+// GET /images/:id/download
+imagesRouter.get('/:id/download', optionalAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await db.query(
+      `
+      SELECT storage_path, mime_type, filename
+      FROM images
+      WHERE id=$1
+      AND is_deleted=FALSE
+      `,
+      [req.params.id]
+    );
+
+    const image = result.rows[0];
+
+    if (!image) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+
+    const stream = await getObject(image.storage_path);
+
+    res.setHeader(
+      'Content-Type',
+      image.mime_type
+    );
+
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${image.filename}"`
+    );
+
+    stream.pipe(res);
+
+  } catch (err) {
+    logger.error('Image download error', err);
+    res.status(500).json({ error: 'Failed to download image' });
+  }
+});
+
+// GET /images/:id
+imagesRouter.get('/:id', optionalAuth, async (req: AuthRequest, res: Response) => {
+  const uid = req.user?.id || null;
+  const result = await db.query(`
+    SELECT i.*, COUNT(l.id)::int AS like_count,
+      ${uid ? 'EXISTS(SELECT 1 FROM likes WHERE image_id=i.id AND user_id=$2)' : 'FALSE'} AS user_liked
+    FROM images i LEFT JOIN likes l ON l.image_id=i.id
+    WHERE i.id=$1 AND i.is_deleted=FALSE GROUP BY i.id
+  `, uid ? [req.params.id, uid] : [req.params.id]);
+
+  if (!result.rows[0]) return res.status(404).json({ error: 'Image not found' });
+  res.json(await addUrls(result.rows[0]));
 });
 
 // DELETE /images/:id  (admin)
