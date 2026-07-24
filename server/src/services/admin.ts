@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { logger } from '../utils/logger';
 
 // Creates the admin user on first start if ADMIN_EMAIL + ADMIN_PASSWORD are set
