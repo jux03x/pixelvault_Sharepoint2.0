@@ -159,7 +159,10 @@ imagesRouter.get('/:id/file', optionalAuth, async (req: AuthRequest, res: Respon
       return res.status(404).json({ error: 'Image not found' });
     }
 
-    const stream = await getObject(image.storage_path);
+    const stream = await minioClient.getObject(
+      BUCKET,
+      image.storage_path
+    );
 
     res.setHeader(
       'Content-Type',
