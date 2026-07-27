@@ -4,7 +4,7 @@ import { db } from '../config/database';
 import { minioClient, BUCKET, deleteObject, getSignedUrl } from '../config/storage';
 import { requireAdmin, AuthRequest } from '../middlewares/auth';
 import { logger } from '../utils/logger';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin);
