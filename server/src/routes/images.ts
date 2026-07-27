@@ -3,7 +3,7 @@ import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
 import { db } from '../config/database';
-import { minioClient, BUCKET, deleteObject, getObject } from '../config/storage';
+import { minioClient, BUCKET, deleteObject } from '../config/storage';
 import { requireAuth, requireAdmin, optionalAuth, AuthRequest } from '../middlewares/auth';
 import { scanBuffer } from '../services/clamav';
 import { logger } from '../utils/logger';
@@ -244,7 +244,10 @@ imagesRouter.get('/:id/download', optionalAuth, async (req: AuthRequest, res: Re
       return res.status(404).json({ error: 'Image not found' });
     }
 
-    const stream = await getObject(image.storage_path);
+    const stream = await minioClient.getObject(
+      BUCKET,
+      image.storage_path
+    );
 
     res.setHeader(
       'Content-Type',
