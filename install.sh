@@ -184,6 +184,30 @@ else
   ok "Port $PORT frei"
 fi
 
+# ── NPM-Abhängigkeiten installieren ───────────────────────────────────────────
+step "NPM-Abhängigkeiten installieren"
+
+for DIR in server client; do
+  info "Führe 'npm install' in ./$DIR aus..."
+
+  if [ ! -d "./$DIR" ]; then
+    warn "Verzeichnis ./$DIR wurde nicht gefunden – überspringe."
+    continue
+  fi
+
+  (
+    cd "./$DIR" || exit 1
+    npm install
+  )
+
+  if [ $? -eq 0 ]; then
+    ok "'npm install' in ./$DIR erfolgreich abgeschlossen."
+  else
+    error "'npm install' in ./$DIR fehlgeschlagen."
+    exit 1
+  fi
+done
+
 # ── Starten ───────────────────────────────────────────────────────────────────
 step "PixelVault starten"
 info "Baue Container (beim ersten Start: ~5-10 Minuten)…"
