@@ -202,7 +202,10 @@ imagesRouter.get('/:id/thumb', optionalAuth, async (req: AuthRequest, res: Respo
       return res.status(404).json({ error: 'Thumbnail not found' });
     }
 
-    const stream = await getObject(image.thumbnail_path);
+    const stream = await minioClient.getObject(
+      BUCKET,
+      image.thumbnail_path
+    );
 
     res.setHeader(
       'Content-Type',
