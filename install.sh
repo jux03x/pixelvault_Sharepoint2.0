@@ -208,6 +208,27 @@ for DIR in server client; do
   fi
 done
 
+# ── bcryptjs installieren ─────────────────────────────────────────────────────
+step "bcryptjs installieren"
+
+if [ -d "./server" ]; then
+  info "Installiere 'bcryptjs' in ./server..."
+
+  (
+    cd "./server" || exit 1
+    npm install bcryptjs
+  )
+
+  if [ $? -eq 0 ]; then
+    ok "'bcryptjs' wurde in ./server erfolgreich installiert."
+  else
+    error "Installation von 'bcryptjs' in ./server fehlgeschlagen."
+    exit 1
+  fi
+else
+  warn "Verzeichnis ./server wurde nicht gefunden – Installation übersprungen."
+fi
+
 # ── Starten ───────────────────────────────────────────────────────────────────
 step "PixelVault starten"
 info "Baue Container (beim ersten Start: ~5-10 Minuten)…"
