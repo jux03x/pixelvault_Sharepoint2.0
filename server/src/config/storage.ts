@@ -53,12 +53,4 @@ export async function getSignedUrl(
   );
 }
 
-export async function deleteObject(objectPath: string): Promise<void> {
-  await minioClient.removeObject(BUCKET, objectPath);
-}
-
-export async function getObject(objectPath: string) {
-  return minioClient.getObject(BUCKET, objectPath);
-}
-
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
