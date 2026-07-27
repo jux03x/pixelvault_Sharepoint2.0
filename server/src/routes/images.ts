@@ -3,7 +3,7 @@ import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
 import { db } from '../config/database';
-import { minioClient, BUCKET, deleteObject } from '../config/storage';
+import { minioClient, BUCKET } from '../config/storage';
 import { requireAuth, requireAdmin, optionalAuth, AuthRequest } from '../middlewares/auth';
 import { scanBuffer } from '../services/clamav';
 import { logger } from '../utils/logger';
