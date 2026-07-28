@@ -50,15 +50,16 @@ async function addUrls(img: any) {
     ...img,
 
     // Bild anzeigen
-    url: `/images/${img.id}/file`,
+    url: `/api/images/${img.id}/file`,
+
 
     // kleines Bild für Galerie
     thumbnail_url: img.thumbnail_path
-      ? `/images/${img.id}/thumb`
+      ? `/api/images/${img.id}/thumb`
       : null,
 
     // Download
-    download_url: `/images/${img.id}/download`,
+    download_url: `/api/images/${img.id}/download`,
   };
 }
 
