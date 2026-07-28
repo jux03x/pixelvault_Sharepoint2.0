@@ -115,8 +115,9 @@ HTTPS läuft sofort, kostenlos, automatisch erneuert.
 ## Häufige Probleme
 
 **Minio alias was not configured properly**
-Manuell anlegen:
+```bash
 docker exec -it pixelvault_sharepoint20-minio-1 mc alias set local http://localhost:9000 pixelvault changeme
+```
 
 **Port belegt**
 ```bash
