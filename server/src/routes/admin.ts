@@ -57,7 +57,7 @@ adminRouter.put('/images/:id/flag', async (req: AuthRequest, res: Response) => {
 adminRouter.delete('/images/:id', async (req: AuthRequest, res: Response) => {
   const row = (await db.query('SELECT * FROM images WHERE id=$1', [req.params.id])).rows[0];
   if (!row) return res.status(404).json({ error: 'Not found' });
-  await Promise.allSettled([deleteObject(row.storage_path), row.thumbnail_path ? deleteObject(row.thumbnail_path) : Promise.resolve()]);
+  await Promise.allSettled([minioClient.removeObjects(BUCKET, row.storage_path), row.thumbnail_path ? minioClient.removeObjects(BUCKET, row.thumbnail_path) : Promise.resolve()]);
   await db.query('UPDATE images SET is_deleted=TRUE WHERE id=$1', [req.params.id]);
   res.json({ message: 'Deleted' });
 });
