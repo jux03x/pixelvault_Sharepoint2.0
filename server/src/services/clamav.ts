@@ -1,6 +1,5 @@
 import net from 'net';
 import { db } from '../config/database';
-import { deleteObject } from '../config/storage';
 import { logger } from '../utils/logger';
 
 const CLAMAV_HOST = process.env.CLAMAV_HOST || 'clamav';
