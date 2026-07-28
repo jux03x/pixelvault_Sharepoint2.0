@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
 import { db } from '../config/database';
-import { minioClient, BUCKET, deleteObject, getSignedUrl } from '../config/storage';
+import { minioClient, BUCKET, getSignedUrl } from '../config/storage';
 import { requireAdmin, AuthRequest } from '../middlewares/auth';
 import { logger } from '../utils/logger';
 import bcrypt from 'bcryptjs';
