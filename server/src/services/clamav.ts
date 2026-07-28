@@ -1,6 +1,7 @@
 import net from 'net';
 import { db } from '../config/database';
 import { logger } from '../utils/logger';
+import { minioClient, BUCKET } from '../config/storage';
 
 const CLAMAV_HOST = process.env.CLAMAV_HOST || 'clamav';
 const CLAMAV_PORT = parseInt(process.env.CLAMAV_PORT || '3310');
@@ -66,8 +67,8 @@ export async function scanBuffer(buffer: Buffer, imageId: string): Promise<void>
       const row = await db.query('SELECT storage_path, thumbnail_path FROM images WHERE id=$1', [imageId]);
       if (row.rows[0]) {
         await Promise.allSettled([
-          deleteObject(row.rows[0].storage_path),
-          row.rows[0].thumbnail_path ? deleteObject(row.rows[0].thumbnail_path) : Promise.resolve(),
+          minioClient.removeObjects(BUCKET, row.rows[0].storage_path),
+          row.rows[0].thumbnail_path ? minioClient.removeObjects(BUCKET, row.rows[0].thumbnail_path) : Promise.resolve(),
         ]);
       }
       await db.query(
