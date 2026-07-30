@@ -35,7 +35,7 @@ export function RegisterPage() {
       await api.auth.register(email, password);
 
       toast.success('Konto erfolgreich erstellt!');
-      navigate('/login');
+      navigate('/auth');
     } catch (err: any) {
       const message = err.message || '';
 
