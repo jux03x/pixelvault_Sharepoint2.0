@@ -58,8 +58,8 @@ INSERT INTO config (key, value)
 VALUES ('app', '{
   "theme": {
     "primaryColor": "#0a0a0a",
-    "accentColor": "#007AFF",
-    "backgroundColor": "#fafafa",
+    "accentColor": "#22533a",
+    "backgroundColor": "#eccfc1ee",
     "font": "DM Sans, sans-serif"
   },
   "branding": {
