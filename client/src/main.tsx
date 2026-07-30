@@ -19,7 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             fontSize: '14px',
             fontFamily: 'DM Sans, sans-serif',
           },
-          success: { iconTheme: { primary: '#007AFF', secondary: '#fff' } },
+          success: { iconTheme: { primary: '#22533a', secondary: '#fff' } },
         }}
       />
     </BrowserRouter>
