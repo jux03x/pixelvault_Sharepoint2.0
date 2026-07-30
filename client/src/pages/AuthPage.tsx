@@ -62,7 +62,16 @@ export function AuthPage() {
         </form>
 
         <div className={styles.footer}>
-          <Link to="/" className={styles.backLink}>← Zurück zur Startseite</Link>
+          <p className={styles.footerText}> 
+            Noch kein Konto?{' '} 
+            <Link to="/register" className={styles.link}> 
+            Jetzt registrieren 
+            </Link> 
+          </p>
+          
+          <Link to="/" className={styles.backLink}> 
+            ← Zurück zur Startseite 
+          </Link> 
         </div>
       </div>
     </div>

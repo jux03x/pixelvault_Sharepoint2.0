@@ -122,7 +122,7 @@ export function RegisterPage() {
         <div className={styles.footer}>
           <p className={styles.footerText}>
             Bereits ein Konto?{' '}
-            <Link to="/login" className={styles.link}>
+            <Link to="/auth" className={styles.link}>
               Jetzt anmelden
             </Link>
           </p>

@@ -9,6 +9,7 @@ import { UploadPage } from './pages/UploadPage';
 import { ImageDetailPage } from './pages/ImageDetailPage';
 import { AuthPage } from './pages/AuthPage';
 import { AdminPage } from './pages/AdminPage';
+import { RegisterPage } from './pages/RegisterPage';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore();
@@ -29,6 +30,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/" element={<Layout />}>
         <Route index element={<HomePage />} />
         <Route path="gallery" element={<GalleryPage />} />
