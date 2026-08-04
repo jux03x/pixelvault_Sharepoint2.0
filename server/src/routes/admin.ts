@@ -51,11 +51,6 @@ adminRouter.get('/images', async (req: AuthRequest, res: Response) => {
   const total = (await db.query('SELECT COUNT(*)::int FROM images WHERE is_deleted=FALSE')).rows[0].count;
 
   const images = await Promise.all(rows.rows.map(addUrls));
-  // const images = await Promise.all(rows.rows.map(async img => ({
-  //   ...img,
-  //   url: await getSignedUrl(img.storage_path).catch(() => ''),
-  //   thumbnail_url: img.thumbnail_path ? await getSignedUrl(img.thumbnail_path).catch(() => '') : null,
-  // })));
 
   res.json({ images, pagination: { page, limit, total, pages: Math.ceil(total/limit) } });
 });
