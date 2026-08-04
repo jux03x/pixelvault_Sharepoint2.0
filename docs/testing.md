@@ -55,49 +55,7 @@ npm run dev
 
 ---
 
-## Als Admin einloggen (im Mock)
-
-1. Klicke auf "Anmelden"
-2. Gib irgendeine E-Mail ein (z.B. `test@test.de`)
-3. Klicke "Magic Link senden"
-4. **Schau in Terminal 1** – dort siehst du den Link:
-   ```
-   ⚡ Mock-Token: mock-token-123
-   👉 http://localhost:5173/auth/verify?token=mock-token-123
-   ```
-5. Öffne diesen Link – du bist eingeloggt als Admin
-
----
-
-## Was du testen kannst
-
-| Feature | Mock-Server | Ohne Backend |
-|---|---|---|
-| Startseite mit Top-Bildern | ✅ | ⚠️ leer |
-| Galerie mit Infinite Scroll | ✅ | ⚠️ leer |
-| Like-System | ✅ | ❌ |
-| Login-Formular | ✅ | ⚠️ nur UI |
-| Upload-Seite (UI) | ✅ | ✅ |
-| Upload tatsächlich | ✅ simuliert | ❌ |
-| Admin-Dashboard | ✅ | ❌ |
-| Design-Tab (Farben etc.) | ✅ | ✅ |
-| Bilddetailseite | ✅ | ❌ |
-
----
-
-## Option B: Nur Frontend (ohne Mock-Server)
-
-```bash
-cd client
-npm install
-npm run dev
-```
-
-Die UI lädt, API-Calls schlagen still fehl. Gut zum Testen von Layout und CSS.
-
----
-
-## Option C: Kompletter Stack mit Docker
+## Option B: Kompletter Stack mit Docker
 
 ```bash
 cp .env.example .env
@@ -105,12 +63,3 @@ cp .env.example .env
 docker compose up -d --build
 # → http://localhost:8080
 ```
-
----
-
-## Mock-Server – wichtige Details
-
-- **Alle Änderungen gehen bei Neustart verloren** – Likes, Uploads etc. sind nur im RAM
-- **Immer Admin** – im Mock hat jeder eingeloggte User Admin-Rechte, damit du alles testen kannst
-- **Echte Bilder** – der Mock nutzt Unsplash-Bilder als Platzhalter, sieht also wie die echte App aus
-- **Kein SMTP** – E-Mails werden nicht wirklich verschickt, der Token erscheint im Terminal
