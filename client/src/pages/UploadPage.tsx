@@ -6,6 +6,7 @@ import { api } from '../services/api';
 import { useAuthStore } from '../store/auth';
 import toast from 'react-hot-toast';
 import styles from './UploadPage.module.css';
+import heic2any from 'heic2any';
 
 interface UploadFile {
   file: File;
@@ -22,15 +23,60 @@ export function UploadPage() {
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const onDrop = useCallback((accepted: File[]) => {
-    const newFiles = accepted.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      status: 'pending' as const,
-      progress: 0,
-    }));
-    setFiles(prev => [...prev, ...newFiles]);
-  }, []);
+  const onDrop = useCallback(async (accepted: File[]) => {
+
+  const convertedFiles = await Promise.all(
+    accepted.map(async (file) => {
+
+      if (
+        file.type === 'image/heic' ||
+        file.type === 'image/heif' ||
+        file.name.toLowerCase().endsWith('.heic') ||
+        file.name.toLowerCase().endsWith('.heif')
+      ) {
+
+        try {
+          const convertedBlob = await heic2any({
+            blob: file,
+            toType: 'image/jpeg',
+            quality: 0.9,
+          });
+
+          const jpegBlob = Array.isArray(convertedBlob)
+            ? convertedBlob[0]
+            : convertedBlob;
+
+          const jpegFile = new File(
+            [jpegBlob],
+            file.name.replace(/\.(heic|heif)$/i, '.jpg'),
+            {
+              type: 'image/jpeg',
+            }
+          );
+
+          return jpegFile;
+
+        } catch (err) {
+          console.error("HEIC conversion failed", err);
+          throw new Error("HEIC konnte nicht konvertiert werden");
+        }
+      }
+
+      return file;
+    })
+  );
+
+
+  const newFiles = convertedFiles.map(file => ({
+    file,
+    preview: URL.createObjectURL(file),
+    status: 'pending' as const,
+    progress: 0,
+  }));
+
+  setFiles(prev => [...prev, ...newFiles]);
+
+}, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
