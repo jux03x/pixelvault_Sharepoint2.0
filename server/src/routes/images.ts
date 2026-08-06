@@ -114,12 +114,6 @@ imagesRouter.post('/upload', requireAuth, uploadLimiter, upload.single('image'),
 
   let mimeType = mime;
 
-  // Convert HEIC → JPEG
-  if (mimeType === 'image/heic' || mimeType === 'image/heif') {
-    buffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
-    mimeType = 'image/jpeg';
-  }
-
   const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
   const id  = uuidv4();
   const storagePath   = `originals/${id}.${ext}`;
