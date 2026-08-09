@@ -15,7 +15,7 @@ node --version   # sollte v18.x.x oder höher zeigen
 
 ---
 
-## Option A: Frontend + Mock-Server (empfohlen zum Testen)
+## Option A: Frontend
 
 Der Mock-Server simuliert die komplette Backend-API mit echten Testbildern. Kein Docker, keine Datenbank.
 
@@ -28,21 +28,7 @@ npm install
 cd ..
 ```
 
-### Schritt 2: Mock-Server starten (Terminal 1)
-
-```bash
-node scripts/mock-server.js
-```
-
-Du siehst:
-```
-╔══════════════════════════════════════════════════╗
-║      📸 PixelVault Mock-Server gestartet         ║
-║  API läuft auf:  http://localhost:3000            ║
-╚══════════════════════════════════════════════════╝
-```
-
-### Schritt 3: Frontend starten (Terminal 2)
+### Schritt 2: Frontend starten (Terminal 2)
 
 ```bash
 cd client
