@@ -193,3 +193,47 @@
   color: var(--color-text);
   margin-top: 8px;
 }
+
+.skeletonPreview {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  background: linear-gradient(
+    90deg,
+    #e5e7eb 25%,
+    #f3f4f6 50%,
+    #e5e7eb 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+
+.skeletonLine {
+  width: 180px;
+  height: 14px;
+  border-radius: 6px;
+  background: #e5e7eb;
+  animation: shimmer 1.2s infinite;
+}
+
+.skeletonLineShort {
+  width: 100px;
+  height: 12px;
+  border-radius: 6px;
+  background: #e5e7eb;
+  animation: shimmer 1.2s infinite;
+}
+
+.convertingText {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
