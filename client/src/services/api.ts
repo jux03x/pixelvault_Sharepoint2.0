@@ -13,15 +13,31 @@ function authHeaders(extra?: Record<string, string>) {
   };
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(
+  path: string,
+  options?: RequestInit
+): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
-    headers: { ...authHeaders(), ...(options?.headers || {}) },
+    credentials: 'include',
+    headers: {
+      ...authHeaders(),
+      ...(options?.headers || {}),
+    },
   });
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(err.error || `HTTP ${res.status}`);
+    const err = await res
+      .json()
+      .catch(() => ({
+        error: 'Request failed',
+      }));
+
+    throw new Error(
+      err.error || `HTTP ${res.status}`
+    );
   }
+
   return res.json();
 }
 
@@ -36,6 +52,22 @@ export const api = {
         method: 'POST', body: JSON.stringify({ email, password }),
       }),
     me: () => request<any>('/auth/me'),
+  },
+
+  appPassword: {
+    check: () =>
+      request<{ unlocked: boolean }>('/app-password/check'),
+
+    unlock: (password: string) =>
+      request<{ unlocked: boolean }>('/app-password/unlock', {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      }),
+
+    logout: () =>
+      request<{ unlocked: boolean }>('/app-password/logout', {
+        method: 'POST',
+      }),
   },
 
   images: {

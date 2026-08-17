@@ -14,6 +14,13 @@ CREATE TABLE IF NOT EXISTS users (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- App password
+CREATE TABLE IF NOT EXISTS app_password (
+  id          INTEGER PRIMARY KEY CHECK (id = 1),
+  password_hash VARCHAR(255) NOT NULL,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Images table
 CREATE TABLE IF NOT EXISTS images (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
