@@ -176,6 +176,16 @@ if [ -z "$ADMIN_PW" ] || [ "$ADMIN_PW" = "bitte-aendern" ]; then
   fi
 fi
 
+APP_PW=$(grep "^APP_PASSWORD=" .env | cut -d= -f2)
+if [ -z "$APP_PW" ] || [ "$APP_PW" = "bitte-aendern" ]; then
+  echo ""; read -s -p "  App Passwort (min. 8 Zeichen): " IN_PW; echo ""
+  if [ ${#IN_PW} -ge 8 ]; then
+    sed -i "s|^APP_PASSWORD=.*|APP_PASSWORD=$IN_PW|" .env && ok "App Passwort gesetzt"
+  else
+    warn "Zu kurz – bitte ADMIN_PASSWORD in .env manuell setzen"
+  fi
+fi
+
 # ── Port prüfen ───────────────────────────────────────────────────────────────
 PORT=$(grep "^PORT=" .env | cut -d= -f2 || echo "8080"); PORT=${PORT:-8080}
 if ss -tlnp 2>/dev/null | grep -q ":$PORT " || netstat -tlnp 2>/dev/null | grep -q ":$PORT "; then
