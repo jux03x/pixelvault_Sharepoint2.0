@@ -15,6 +15,10 @@ import { configRouter } from './routes/config';
 import { adminRouter } from './routes/admin';
 import { errorHandler } from './middlewares/errorHandler';
 import { logger } from './utils/logger';
+import { ensureAppPassword } from './services/appPassword';
+import cookieParser from 'cookie-parser';
+import { appPasswordRouter } from './routes/appPassword';
+import { requireAppAccess } from './middlewares/appAccess';
 
 async function start() {
   logger.info('🚀 PixelVault starting up…');
@@ -26,6 +30,7 @@ async function start() {
 
   // ── Initialize ───────────────────────────────────────────────────────────
   await runMigrations(db);
+  await ensureAppPassword(db);
   await ensureBucket();
   await ensureAdminUser(db);
 
@@ -37,18 +42,25 @@ async function start() {
   app.use(cors({ origin: process.env.APP_URL || '*', credentials: true }));
   app.use(compression());
   app.use(express.json({ limit: '1mb' }));
+  app.use(cookieParser());
 
-  // Health check
-  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  // Public
+app.get('/health', (_req, res) =>
+  res.json({ status: 'ok' })
+);
 
-  // Routes
-  app.use('/auth', authRouter);
-  app.use('/images', imagesRouter);
-  app.use('/images', likesRouter);
-  app.use('/config', configRouter);
-  app.use('/admin', adminRouter);
+app.use('/app-password', appPasswordRouter);
 
-  app.use(errorHandler);
+// App password required
+app.use(requireAppAccess);
+
+app.use('/auth', authRouter);
+app.use('/images', imagesRouter);
+app.use('/images', likesRouter);
+app.use('/config', configRouter);
+app.use('/admin', adminRouter);
+
+app.use(errorHandler);
 
   app.listen(PORT, '0.0.0.0', () => {
     logger.info(`✅ Server ready on port ${PORT}`);
